@@ -2,6 +2,7 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use creek::{ReadDiskStream, SeekMode, SymphoniaDecoder};
 use crossbeam_channel::{Receiver, Sender};
@@ -121,6 +122,16 @@ impl MediaElement {
 
     pub(crate) fn take_stream(&mut self) -> Option<RTSStream> {
         self.stream.take()
+    }
+
+    /// Total duration (if available)
+    pub fn duration(&self) -> Option<Duration> {
+        let file_info = self.stream.as_ref().map(|s| s.stream.info())?;
+        let sample_rate = file_info.sample_rate?;
+        debug_assert!(sample_rate > 0);
+        Some(Duration::from_secs_f64(
+            file_info.num_frames as f64 / f64::from(sample_rate),
+        ))
     }
 
     pub fn current_time(&self) -> f64 {
